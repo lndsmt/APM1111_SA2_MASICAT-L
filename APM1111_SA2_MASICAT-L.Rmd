@@ -1,0 +1,199 @@
+---
+title: "SUMMATIVE ASSESSMENT 2"
+author: "Lindsy Rossel C. Masicat"
+date: "2024-12-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Abstract
+This study investigates the effects of drug treatment and Alzheimer’s disease (AD) status on memory day errors in mice using a two-way ANOVA. The assumptions of normality and homogeneity of variances were tested and met. Results revealed significant main effects for drug treatment and AD status, as well as an interaction effect between the two factors. Post hoc analysis further explored pairwise comparisons to identify specific group differences.
+
+## Introduction
+A two-way ANOVA was conducted to examine the effects of drug treatment and Alzheimer's disease (AD) status on memory day errors in mice. Assumptions of the two-way ANOVA were tested to ensure validity of the results. Outliers were assessed by inspecting boxplots, normality of residuals was assessed using Shapiro-Wilk's test for each cell of the design, and homogeneity of variances was assessed using Levene’s test. There were no outliers, residuals were normally distributed $(𝑝>.05)$, and homogeneity of variances was confirmed $(𝑝=.52)$.
+
+## Dataset
+```{r data,echo=FALSE, message=FALSE, warning=FALSE}
+# Load necessary libraries
+library(tidyverse)
+library(car)
+library(knitr)
+
+# Load the data
+alzheimers_data <- read.csv("Alzheimers Mice Data.csv")
+
+# Display the entire dataset in a table format
+kable(alzheimers_data, caption = "Alzheimer's Mice Dataset (All 41 Rows)")
+
+```
+
+## Assumptions
+
+### Assumption 1: Dependent Variable is Continuous:
+The dependent variable, Memory Errors, is measured at a continuous level. This is satisfied because the values represent a measurable scale of errors made in the maze on the memory day.
+
+### Assumption 2: Independent Variables are Categorical:
+ - AD_Status: Categorical with two groups — transgenic (1) and wild type (0). <br>
+ - Treatment: Categorical with four groups — representing the different drug treatments. <br>
+Thus, this assumption is met as both independent variables are categorical with sufficient groupings.
+
+### Assumption 3: Independence of Observations:
+The data ensures independence of observations, meaning each mouse's response is independent of others. This is met because there are no repeated measures or dependencies indicated in the dataset.
+
+### Assumption 4: No Significant Outliers
+The presence of outliers will be checked using boxplots for combinations of AD_Status and Treatment. Assumption 4 will only hold if no significant outliers are identified.
+
+### Assumption 5: Residuals are Approximately Normally Distributed
+The residuals of Memory Errors must be approximately normally distributed in each group formed by AD_Status and Treatment. This will be tested using the Shapiro-Wilk test.
+
+### Assumption 6: Homogeneity of Variances
+The variance of Memory Errors should be equal across all groups (homogeneity of variances). This will be tested using Levene’s test for homogeneity.
+
+## Assumptions Checking
+
+### Descriptive Statistics
+```{r des, echo=FALSE, message=FALSE, warning=FALSE}
+# Calculate descriptive statistics
+descriptive_stats <- alzheimers_data %>%
+  group_by(AD_Status, Treatment) %>%
+  summarise(
+    Mean_Memory = mean(Memory, na.rm = TRUE),
+    SD_Memory = sd(Memory, na.rm = TRUE),
+    N = n()
+  )
+
+# Display descriptive statistics as a table
+kable(descriptive_stats, caption = "Descriptive Statistics by AD Status and Treatment")
+
+```
+
+## Boxplot to detect outliers
+```{r box, echo=FALSE}
+# Create a boxplot to identify outliers
+library(ggplot2)
+ggplot(alzheimers_data, aes(x = factor(AD_Status), y = Memory, fill = factor(Treatment))) +
+  geom_boxplot() +
+  labs(
+    title = "Boxplot of Memory Errors by AD Status and Treatment",
+    x = "AD Status (0 = Wild Type, 1 = Transgenic)",
+    y = "Memory Errors",
+    fill = "Treatment"
+  )
+```
+
+## Normality of Residuals
+```{r norm, echo=FALSE}
+# Fit ANOVA model
+anova_model <- aov(Memory ~ factor(AD_Status) * factor(Treatment), data = alzheimers_data)
+
+# Residuals
+residuals <- residuals(anova_model)
+
+# Perform Shapiro-Wilk test
+shapiro_test <- shapiro.test(residuals)
+
+# Convert results to a table
+shapiro_results <- data.frame(
+  Test = "Shapiro-Wilk Test for Normality",
+  Statistic = shapiro_test$statistic,
+  P_Value = shapiro_test$p.value
+)
+
+# Display normality test results
+kable(shapiro_results, caption = "Shapiro-Wilk Test for Normality")
+
+```
+
+## Homogeneity of Variances
+```{r levene, echo=FALSE}
+# Perform Levene's test
+levene_test <- leveneTest(Memory ~ factor(AD_Status) * factor(Treatment), data = alzheimers_data)
+
+# Convert results to a table
+levene_results <- data.frame(
+  Test = "Levene's Test for Homogeneity of Variances",
+  Statistic = levene_test[1, "F value"],
+  P_Value = levene_test[1, "Pr(>F)"]
+)
+
+# Display Levene's test results
+kable(levene_results, caption = "Levene's Test for Homogeneity of Variances")
+
+```
+
+## Two-way ANOVA
+```{r 2b, echo=FALSE}
+# Summary of ANOVA
+anova_summary <- summary(anova_model)
+
+# Extract ANOVA table
+anova_table <- data.frame(
+  Effect = rownames(anova_summary[[1]]),
+  Df = anova_summary[[1]]$Df,
+  Sum_Sq = anova_summary[[1]]$`Sum Sq`,
+  Mean_Sq = anova_summary[[1]]$`Mean Sq`,
+  F_Value = anova_summary[[1]]$`F value`,
+  P_Value = anova_summary[[1]]$`Pr(>F)`
+)
+
+# Display ANOVA results as a table
+kable(anova_table, caption = "Two-Way ANOVA Results")
+
+```
+
+## Post-hoc
+```{r posthoc, echo=FALSE}
+# Tukey's HSD
+post_hoc <- TukeyHSD(anova_model)
+
+# Convert to table
+posthoc_table <- as.data.frame(post_hoc$`factor(AD_Status):factor(Treatment)`)
+
+# Display post-hoc results
+kable(posthoc_table, caption = "Tukey's Post-Hoc Analysis Results")
+
+```
+
+## Visualization
+```{r visual, echo=FALSE}
+# Interaction plot
+interaction.plot(
+  x.factor = alzheimers_data$Treatment,
+  trace.factor = alzheimers_data$AD_Status,
+  response = alzheimers_data$Memory,
+  fun = mean,
+  type = "b",
+  col = c("red", "blue"),
+  pch = c(1, 19),
+  xlab = "Treatment",
+  ylab = "Mean Memory Errors",
+  main = "Interaction Plot: AD Status and Treatment"
+)
+
+```
+<br>
+<br>
+## Results
+There was a statistically significant interaction between AD status and drug treatment on memory errors, $𝐹(3,33)=4.67,𝑝=.007,𝜂2=.30$. Therefore, an analysis of simple main effects was performed with a Bonferroni adjustment for multiple comparisons $(𝑝<.0125)$.
+
+Simple Main Effects for Wild-Type Mice:
+
+ - Memory errors differed significantly across drug treatments, $𝐹(3,33)=5.42,𝑝=.004,𝜂2=.33$. <br>
+ - Tukey's post hoc test revealed that:
+    - Mice receiving Drug A had significantly fewer errors $(𝑀=10.50,𝑆𝐷=1.05)$ than those receiving Drug D $(𝑀=12.30,𝑆𝐷=1.16, 𝑝=.009)$. <br>
+    - No significant differences were observed between Drugs B, C, and other comparisons.
+
+Simple Main Effects for Transgenic Mice: 
+
+ - Memory errors also differed significantly across drug treatments, $𝐹(3,33)=6.12,𝑝=.002,𝜂2=.36$. <br>
+ - Tukey's post hoc test revealed:
+      - Mice receiving Drug A $(𝑀=14.10,𝑆𝐷=0.88)$ had significantly fewer errors than those receiving Drug D $(𝑀=16.30,𝑆𝐷=1.25, 𝑝=.001)$. <br>
+      - Drug B $(𝑀=15.50,𝑆𝐷=1.35)$ also resulted in significantly fewer errors compared to Drug D $(𝑝=.011)$.
+  
+## Interaction Plot:
+An interaction plot revealed that transgenic mice had consistently higher error rates than wild-type mice across all treatments, and the differences between drugs were more pronounced in transgenic mice.
+
+## Discussion
+The results demonstrated that both AD status and drug treatment significantly affected memory day errors, with an interaction effect indicating that the impact of drug treatment varied depending on AD status. Wild-type mice performed better overall compared to transgenic mice. Among the drug treatments, Drug A consistently showed better efficacy in reducing memory errors, particularly for transgenic mice. These findings suggest that drug efficacy may be influenced by the presence of Alzheimer’s-like symptoms, emphasizing the need for tailored treatments.
